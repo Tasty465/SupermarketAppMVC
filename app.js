@@ -31,6 +31,13 @@ app.use(session({
 }));
 app.use(flash());
 
+// expose flash messages to all views via res.locals
+app.use((req, res, next) => {
+  res.locals.success = req.flash('success') || [];
+  res.locals.error = req.flash('error') || [];
+  next();
+});
+
 // NEW: rewrite redirects for admin users so controller redirects to '/' go to '/inventory'
 app.use((req, res, next) => {
   const originalRedirect = res.redirect.bind(res);
@@ -120,6 +127,56 @@ app.post('/add-to-cart/:id', checkAuthenticated, (req, res) => {
 
     res.redirect('/cart');
   });
+});
+
+
+app.post('/checkout', checkAuthenticated, (req, res) => {
+  console.log('POST /checkout called; session user=', req.session && req.session.user ? req.session.user.username : 'none');
+  const cart = req.session.cart || [];
+  if (!cart.length) {
+    req.flash('error', 'Your cart is empty');
+    return res.redirect('/cart');
+  }
+
+  // First, ensure all items have sufficient stock
+  const checks = cart.map(item => new Promise((resolve, reject) => {
+    ProductModel.getById(item.id, (err, product) => {
+      if (err) return reject(err);
+      if (!product) return reject(new Error('Product not found'));
+      if (product.quantity < item.quantity) return resolve({ ok: false, id: item.id, available: product.quantity, name: product.productName });
+      resolve({ ok: true, product, item });
+    });
+  }));
+
+  Promise.all(checks)
+    .then(results => {
+      const insufficient = results.find(r => r.ok === false);
+      if (insufficient) {
+        console.log('Checkout failed - insufficient stock for', insufficient.name, 'available=', insufficient.available);
+        req.flash('error', `Insufficient stock for ${insufficient.name} (available: ${insufficient.available})`);
+        return res.redirect('/cart');
+      }
+
+      // All good — apply updates
+      const updates = results.map(r => new Promise((resolve, reject) => {
+        const newQty = r.product.quantity - r.item.quantity;
+        ProductModel.updateQuantity(r.product.id, newQty, (err) => {
+          if (err) return reject(err);
+          resolve();
+        });
+      }));
+
+      return Promise.all(updates).then(() => {
+        console.log('Checkout successful for user=', req.session && req.session.user ? req.session.user.username : 'unknown');
+        req.session.cart = [];
+        req.flash('success', 'Purchase completed successfully');
+        res.redirect('/shopping');
+      });
+    })
+    .catch(err => {
+      console.error('Checkout error', err);
+      res.status(500).send('Internal Server Error');
+    });
 });
 
 app.get('/cart', checkAuthenticated, (req, res) => {

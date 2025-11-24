@@ -9,6 +9,20 @@
   <%- include('partials/navbar') %>
   <!-- Cart Content -->
   <div class="container">
+    <% if (typeof error !== 'undefined' && error.length) { %>
+      <div class="alert alert-danger mt-3">
+        <% error.forEach(function(msg){ %>
+          <div><%= msg %></div>
+        <% }); %>
+      </div>
+    <% } %>
+    <% if (typeof success !== 'undefined' && success.length) { %>
+      <div class="alert alert-success mt-3">
+        <% success.forEach(function(msg){ %>
+          <div><%= msg %></div>
+        <% }); %>
+      </div>
+    <% } %>
     <h2 class="mt-4">Shopping Cart</h2>
     <% if (cart.length === 0) { %>
       <p>Your cart is empty.</p>
@@ -39,6 +53,9 @@
 
       <div class="mt-4">
         <a href="/shopping" class="btn btn-secondary">Back to Shopping</a>
+        <form action="/checkout" method="POST" class="d-inline ms-2">
+          <button type="submit" class="btn btn-success">Checkout / Purchase</button>
+        </form>
       </div>
     <% } %>
   </div>
