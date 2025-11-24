@@ -32,10 +32,16 @@
                                 <p class="text-muted">In stock: <%= product.quantity %></p>
                                 <p class="fw-bold">$<%= product.price.toFixed(2) %></p>
                                 <% if (product.quantity > 0) { %>
-                                    <form action="/add-to-cart/<%= product.id %>" method="POST" class="d-flex align-items-center">
-                                        <input type="number" name="quantity" value="1" min="1" max="<%= product.quantity %>" step="1" class="form-control me-2" style="width:120px;">
-                                        <button type="submit" class="btn btn-primary">Buy</button>
-                                    </form>
+                                    <% if (user && user.role !== 'admin') { %>
+                                        <form action="/add-to-cart/<%= product.id %>" method="POST" class="d-flex align-items-center">
+                                            <input type="number" name="quantity" value="1" min="1" max="<%= product.quantity %>" step="1" class="form-control me-2" style="width:120px;">
+                                            <button type="submit" class="btn btn-primary">Buy</button>
+                                        </form>
+                                    <% } else { %>
+                                        <div class="mt-3">
+                                            <a href="/updateProduct/<%= product.id %>" class="btn btn-outline-primary">Edit Product</a>
+                                        </div>
+                                    <% } %>
                                 <% } else { %>
                                     <div class="mt-3">
                                         <button class="btn btn-secondary" disabled>Sold Out</button>
