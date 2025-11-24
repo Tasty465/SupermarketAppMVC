@@ -31,6 +31,40 @@ body{
 .navbar-brand{ font-weight:700; letter-spacing:0.6px; }
 .nav-link{ color: rgba(255,255,255,0.95) !important; }
 
+/* Navbar interactive hover for links and buttons to 'light up' like the cart button */
+.navbar .nav-link,
+.navbar .nav-item .btn {
+  transition: background-color 150ms ease, transform 120ms ease, box-shadow 150ms ease;
+  border-radius: 6px;
+  padding: 6px 10px;
+}
+.navbar .nav-link:hover,
+.navbar .nav-item .btn:hover {
+  background-color: rgba(255,255,255,0.09);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 18px rgba(0,0,0,0.12);
+  color: #fff !important;
+}
+
+/* Make nav-link look more button-like when small screens collapse */
+.navbar .nav-link { display: inline-block; }
+
+/* Remove outline/border for the cart button while keeping hover effect */
+.navbar .cart-btn {
+  border: none !important;
+  /* allow hover background to apply (no !important) */
+  background-color: transparent;
+  box-shadow: none;
+  padding: 6px 10px;
+  display: inline-flex;
+  align-items: center;
+}
+.navbar .cart-btn:focus,
+.navbar .cart-btn:active {
+  outline: none;
+  box-shadow: none;
+}
+
 /* Table & product styles */
 .table img{ border-radius:6px; }
 .table thead th{ background: rgba(250,250,250,0.6); }

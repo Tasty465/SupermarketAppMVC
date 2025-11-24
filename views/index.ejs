@@ -10,23 +10,27 @@
 <body>
     <%- include('partials/navbar') %>
 
-    <div class="container">
-        <p style="text-align: center;">
-            <% if (user) {%>
-              <% if (user.role === "admin") { %>
-                <br>
-                Back to <a href="/inventory">inventory!</a>
-              <% } else { %>
-                <br>
-                Continue <a href="/shopping">Shopping!</a>
-                <% } %>
-            <% } else { %>
-            <br>
-            Welcome to supermarket app! <br>
-            Please <a href = "/login" >login</a> to continue...
-            <% } %>
-        </p>
-        
+    <div class="container d-flex align-items-center justify-content-center" style="min-height:75vh;">
+      <div class="card p-4 text-center" style="max-width:640px; width:100%;">
+        <h2 class="mb-3">Welcome to Supermarket App</h2>
+        <% if (user) { %>
+          <% if (user.role === 'admin') { %>
+            <p>Welcome back, <strong><%= user.username %></strong></p>
+            <a class="btn btn-primary me-2" href="/inventory">Go to Inventory</a>
+            <a class="btn btn-secondary" href="/logout">Logout</a>
+          <% } else { %>
+            <p>Welcome back, <strong><%= user.username %></strong></p>
+            <a class="btn btn-primary me-2" href="/shopping">Start Shopping</a>
+            <a class="btn btn-outline-secondary" href="/cart">View Cart <span class="badge bg-danger ms-1"><%= typeof cartCount !== 'undefined' ? cartCount : 0 %></span></a>
+          <% } %>
+        <% } else { %>
+          <p>Please log in or register to continue.</p>
+          <div class="d-flex gap-2 mt-3">
+            <a class="btn btn-primary flex-fill" href="/login">Login</a>
+            <a class="btn btn-outline-primary flex-fill" href="/register">Register</a>
+          </div>
+        <% } %>
+      </div>
     </div>
 </body>
 </html>

@@ -35,6 +35,10 @@ app.use(flash());
 app.use((req, res, next) => {
   res.locals.success = req.flash('success') || [];
   res.locals.error = req.flash('error') || [];
+  // expose current user and cart count to all views
+  res.locals.user = req.session && req.session.user ? req.session.user : null;
+  const cart = req.session && req.session.cart ? req.session.cart : [];
+  res.locals.cartCount = Array.isArray(cart) ? cart.reduce((s, it) => s + (parseInt(it.quantity, 10) || 0), 0) : 0;
   next();
 });
 
