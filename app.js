@@ -31,22 +31,18 @@ app.use(session({
 }));
 app.use(flash());
 
-// expose flash messages to all views via res.locals
 app.use((req, res, next) => {
   res.locals.success = req.flash('success') || [];
   res.locals.error = req.flash('error') || [];
-  // expose current user and cart count to all views
   res.locals.user = req.session && req.session.user ? req.session.user : null;
   const cart = req.session && req.session.cart ? req.session.cart : [];
   res.locals.cartCount = Array.isArray(cart) ? cart.reduce((s, it) => s + (parseInt(it.quantity, 10) || 0), 0) : 0;
   next();
 });
 
-// NEW: rewrite redirects for admin users so controller redirects to '/' go to '/inventory'
 app.use((req, res, next) => {
   const originalRedirect = res.redirect.bind(res);
   res.redirect = function (url) {
-    // if admin and redirect target is home, send to inventory instead
     if ((url === '/' || url === '') && req.session && req.session.user && req.session.user.role === 'admin') {
       return originalRedirect('/inventory');
     }
@@ -142,7 +138,6 @@ app.post('/checkout', checkAuthenticated, (req, res) => {
     return res.redirect('/cart');
   }
 
-  // First, ensure all items have sufficient stock
   const checks = cart.map(item => new Promise((resolve, reject) => {
     ProductModel.getById(item.id, (err, product) => {
       if (err) return reject(err);
@@ -161,7 +156,6 @@ app.post('/checkout', checkAuthenticated, (req, res) => {
         return res.redirect('/cart');
       }
 
-      // All good — apply updates
       const updates = results.map(r => new Promise((resolve, reject) => {
         const newQty = r.product.quantity - r.item.quantity;
         ProductModel.updateQuantity(r.product.id, newQty, (err) => {
@@ -172,9 +166,29 @@ app.post('/checkout', checkAuthenticated, (req, res) => {
 
       return Promise.all(updates).then(() => {
         console.log('Checkout successful for user=', req.session && req.session.user ? req.session.user.username : 'unknown');
+        // Calculate totals and create invoice
+        let subtotal = 0;
+        const invoiceItems = cart.map(item => {
+          const lineTotal = item.price * item.quantity;
+          subtotal += lineTotal;
+          return { ...item, lineTotal };
+        });
+        const tax = subtotal * 0.08; // 8% tax
+        const total = subtotal + tax;
+        
+        // Save invoice to session
+        req.session.invoice = {
+          invoiceNumber: 'INV-' + Date.now(),
+          date: new Date().toLocaleDateString('en-US'),
+          items: invoiceItems,
+          subtotal,
+          tax,
+          total,
+          customer: req.session.user.username
+        };
+        
         req.session.cart = [];
-        req.flash('success', 'Purchase completed successfully');
-        res.redirect('/shopping');
+        res.redirect('/invoice');
       });
     })
     .catch(err => {
@@ -186,6 +200,15 @@ app.post('/checkout', checkAuthenticated, (req, res) => {
 app.get('/cart', checkAuthenticated, (req, res) => {
   const cart = req.session.cart || [];
   res.render('cart', { cart, user: req.session.user });
+});
+
+app.get('/invoice', checkAuthenticated, (req, res) => {
+  const invoice = req.session.invoice;
+  if (!invoice) {
+    req.flash('error', 'No invoice found');
+    return res.redirect('/cart');
+  }
+  res.render('invoice', { invoice, user: req.session.user });
 });
 
 app.get('/logout', (req, res) => {

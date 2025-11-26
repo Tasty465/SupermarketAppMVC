@@ -61,14 +61,7 @@ var formData = (typeof formData !== 'undefined') ? formData : {};
                 <input type="text" id="address" name="address" class="form-control" required value="<%= formData.address || '' %>">
             </div>
 
-            <div class="mb-3">
-                <label for="role" class="form-label">Role</label>
-                <select id="role" name="role" class="form-control" required>
-                    <option value="user" <% if (formData && formData.role === 'user') { %> selected <% } %>>User</option>
-                    <option value="admin" <% if (formData && formData.role === 'admin') { %> selected <% } %>>Admin</option>
-                </select>
-            </div>
-
+            
             <div class="d-grid">
               <button type="submit" class="btn btn-primary">Register</button>
             </div>
