@@ -33,6 +33,7 @@
             <th>Price</th>
             <th>Quantity</th>
             <th>Total</th>
+            
           </tr>
         </thead>
         <tbody>
@@ -43,6 +44,7 @@
                 <td><img src="/images/<%= cart[i].image %>" width="80" class="img-thumbnail"></td>
                 <td><%= cart[i].quantity %></td>
                 <td>$<%= (cart[i].price * cart[i].quantity).toFixed(2) %></td>
+                <td>delete</td>
             </tr>
             <% total += cart[i].price * cart[i].quantity; %>
           <% }; %>
