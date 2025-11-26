@@ -62,7 +62,7 @@
         items.forEach(it => {
           const a = document.createElement('a');
           a.className = 'list-group-item list-group-item-action d-flex align-items-center';
-          // for inventory, navigate to update page for quick admin edit
+
           a.href = '/updateProduct/' + encodeURIComponent(it.id);
           a.innerHTML = '<div style="width:40px;height:40px;overflow:hidden;margin-right:12px"><img src="/images/'+(it.image||'')+'" style="width:100%" onerror="this.style.display=\'none\'"></div>' +
                         '<div>' + (it.name || '') + '</div>';
@@ -85,7 +85,6 @@
         timeout = setTimeout(() => fetchResults(q), 250);
       });
 
-      // close when clicking outside
       document.addEventListener('click', function(e){
         if (!document.getElementById('search-form-inv').contains(e.target)) clearResults();
       });
