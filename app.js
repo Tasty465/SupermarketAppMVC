@@ -166,17 +166,16 @@ app.post('/checkout', checkAuthenticated, (req, res) => {
 
       return Promise.all(updates).then(() => {
         console.log('Checkout successful for user=', req.session && req.session.user ? req.session.user.username : 'unknown');
-        // Calculate totals and create invoice
+       
         let subtotal = 0;
         const invoiceItems = cart.map(item => {
           const lineTotal = item.price * item.quantity;
           subtotal += lineTotal;
           return { ...item, lineTotal };
         });
-        const tax = subtotal * 0.08; // 8% tax
+        const tax = subtotal * 0.08; 
         const total = subtotal + tax;
         
-        // Save invoice to session
         req.session.invoice = {
           invoiceNumber: 'INV-' + Date.now(),
           date: new Date().toLocaleDateString('en-US'),

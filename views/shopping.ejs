@@ -40,7 +40,19 @@
       </div>
     </div>
     <br>
-    <div class="row">
+    
+    
+    <div class="mb-3 d-flex gap-2">
+      <button id="view-cards-btn" class="btn btn-outline-primary" title="Card View">
+        <i class="bi bi-grid-3x2"></i> Cards
+      </button>
+      <button id="view-table-btn" class="btn btn-outline-secondary" title="Table View">
+        <i class="bi bi-table"></i> Table
+      </button>
+    </div>
+
+    <!-- Card View -->
+    <div id="cards-view" class="row">
       <% products.forEach(function(product){ %>
         <div class="col-md-4 mb-4">
           <div class="card h-100">
@@ -70,8 +82,91 @@
         </div>
       <% }); %>
     </div>
+
+    <!-- Table View -->
+    <div id="table-view" style="display:none;">
+      <table class="table table-striped table-hover">
+        <thead class="table-dark">
+          <tr>
+            <th>Image</th>
+            <th>Product Name</th>
+            <th>Price</th>
+            <th>In Stock</th>
+            <th>Status</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% products.forEach(function(product){ %>
+            <tr>
+              <td style="width:80px;">
+                <img src="/images/<%= product.image %>" style="width:60px;height:60px;object-fit:cover;">
+              </td>
+              <td>
+                <a href="/product/<%= product.id %>"><%= product.productName %></a>
+              </td>
+              <td class="fw-bold">$<%= product.price.toFixed(2) %></td>
+              <td><%= product.quantity %></td>
+              <td>
+                <% if (product.quantity === 0) { %>
+                  <span class="badge bg-danger">Sold Out</span>
+                <% } else { %>
+                  <span class="badge bg-success">Available</span>
+                <% } %>
+              </td>
+              <td>
+                <% if (product.quantity > 0) { %>
+                  <form id="table-buy-form-<%= product.id %>" action="/add-to-cart/<%= product.id %>" method="POST" class="d-flex align-items-center gap-2">
+                    <input type="number" name="quantity" class="form-control" value="1" min="1" max="<%= product.quantity %>" step="1" style="width:60px;">
+                    <button type="submit" class="btn btn-sm btn-primary">Buy</button>
+                  </form>
+                <% } else { %>
+                  <button class="btn btn-sm btn-secondary" disabled>Buy</button>
+                <% } %>
+              </td>
+            </tr>
+          <% }); %>
+        </tbody>
+      </table>
+    </div>
   </div>
   <script>
+    const cardsView = document.getElementById('cards-view');
+    const tableView = document.getElementById('table-view');
+    const cardsBtn = document.getElementById('view-cards-btn');
+    const tableBtn = document.getElementById('view-table-btn');
+
+    // Load saved preference from localStorage
+    const savedView = localStorage.getItem('productViewMode') || 'cards';
+    
+    function setView(mode) {
+      if (mode === 'table') {
+        cardsView.style.display = 'none';
+        tableView.style.display = 'block';
+        cardsBtn.classList.remove('btn-primary');
+        cardsBtn.classList.add('btn-outline-primary');
+        tableBtn.classList.remove('btn-outline-secondary');
+        tableBtn.classList.add('btn-primary');
+        localStorage.setItem('productViewMode', 'table');
+      } else {
+        cardsView.style.display = '';
+        tableView.style.display = 'none';
+        cardsBtn.classList.remove('btn-outline-primary');
+        cardsBtn.classList.add('btn-primary');
+        tableBtn.classList.remove('btn-primary');
+        tableBtn.classList.add('btn-outline-secondary');
+        localStorage.setItem('productViewMode', 'cards');
+      }
+    }
+
+    
+    setView(savedView);
+
+    // Attach event listeners
+    cardsBtn.addEventListener('click', () => setView('cards'));
+    tableBtn.addEventListener('click', () => setView('table'));
+
+    // Original search functionality
     (function(){
       const input = document.getElementById('search-input');
       const results = document.getElementById('search-results');
