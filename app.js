@@ -250,8 +250,8 @@ app.post('/updateProduct/:id', checkAuthenticated, checkAdmin, upload.single('im
 app.get('/deleteProduct/:id', checkAuthenticated, checkAdmin, ProductController.delete);
 
 app.get('/users', checkAuthenticated, checkAdmin, UserController.list);
-app.get('/user/:id', checkAuthenticated, UserController.getById);
-app.post('/user/:id/update', checkAuthenticated, UserController.update);
+app.get('/user/:id', checkAuthenticated, checkAdmin, UserController.getById);
+app.post('/user/:id/update', checkAuthenticated, checkAdmin, UserController.update);
 app.get('/user/:id/delete', checkAuthenticated, checkAdmin, UserController.delete);
 
 const PORT = process.env.PORT || 3000;

@@ -36,12 +36,7 @@
               <div class="mt-auto d-flex gap-2">
                 <a href="/user/<%= u.id %>" class="btn btn-sm btn-outline-primary">View / Edit</a>
 
-                <form action="/user/<%= u.id %>/update" method="POST" class="d-inline">
-                  <input type="hidden" name="role" value="<%= u.role === 'admin' ? 'user' : 'admin' %>">
-                  <button type="submit" class="btn btn-sm <%= u.role === 'admin' ? 'btn-outline-warning' : 'btn-outline-success' %>">
-                    <%= u.role === 'admin' ? 'Demote' : 'Promote' %>
-                  </button>
-                </form>
+                
 
                 <a href="/user/<%= u.id %>/delete" onclick="return confirm('Delete user <%= (u.username||u.email) %>?')" class="btn btn-sm btn-outline-danger">Delete</a>
               </div>

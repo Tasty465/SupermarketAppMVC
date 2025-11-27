@@ -207,15 +207,22 @@ const UserController = {
 			const userData = {
 				username: req.body.username || req.body.userName,
 				email: req.body.email,
-				password: req.body.password,
 				address: req.body.address,
 				contact: req.body.contact
 				// role will be added below after validation
 			};
 
-			// Only set password if provided
-			if (userData.password) {
-				userData.password = await bcrypt.hash(userData.password, 10);
+			// Only hash and set password if provided (non-empty)
+			if (req.body.password && req.body.password.trim()) {
+				userData.password = await bcrypt.hash(req.body.password, 10);
+			} else {
+				// If no password provided, fetch current password from DB to keep it unchanged
+				const raw = await modelCall(UserModel.getById.bind(UserModel), id);
+				let currentUser = normalizeResult(raw);
+				if (Array.isArray(currentUser)) currentUser = currentUser[0];
+				if (currentUser) {
+					userData.password = currentUser.password;
+				}
 			}
 
 			// Role sanitization: allow only 'admin' or 'user'.
@@ -236,7 +243,8 @@ const UserController = {
 			const raw = await modelCall(UserModel.update.bind(UserModel), id, userData);
 			const result = normalizeResult(raw) || raw;
 			if (result && result.affectedRows === 0) return res.status(404).send('User not found');
-			res.redirect('/');
+			req.flash('success', 'User profile updated successfully');
+			res.redirect('/users');
 		} catch (err) {
 			console.error(`Error updating user ${id}:`, err);
 			return res.status(500).send('Internal Server Error');
