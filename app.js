@@ -175,7 +175,7 @@ app.post('/checkout', checkAuthenticated, (req, res) => {
               subtotal += lineTotal;
               return { ...item, lineTotal };
             });
-            const tax = subtotal * 0.08;
+            const tax = subtotal * 0.09;
             const total = subtotal + tax;
 
             const invoiceNumber = 'INV-' + Date.now();

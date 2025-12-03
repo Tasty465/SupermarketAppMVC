@@ -17,21 +17,23 @@
       <% } %>
     </div>
 
-    <% if (!invoices || invoices.length === 0) { %>
-      <div class="alert alert-info">No invoices found.</div>
-    <% } else { %>
-      <table class="table table-striped">
-        <thead class="table-dark">
+    <table class="table table-striped text-dark">
+      <thead class="text-dark bg-light">
+        <tr>
+          <th class="text-dark">Invoice</th>
+          <th class="text-dark">Created On</th>
+          <th class="text-dark">Total before tax</th>
+          <th class="text-dark">Total tax</th>
+          <th class="text-dark">Total after tax</th>
+          <th class="text-dark"></th>
+        </tr>
+      </thead>
+      <tbody>
+        <% if (!invoices || invoices.length === 0) { %>
           <tr>
-            <th>Invoice #</th>
-            <th>Date</th>
-            <th>Subtotal</th>
-            <th>Tax</th>
-            <th>Total</th>
-            <th></th>
+            <td colspan="6" class="text-center">No invoices found.</td>
           </tr>
-        </thead>
-        <tbody>
+        <% } else { %>
           <% invoices.forEach(function(inv){ %>
             <tr>
               <td><%= inv.invoice_number %></td>
@@ -42,9 +44,9 @@
               <td><a href="/invoice/<%= inv.id %>" class="btn btn-sm btn-primary">View</a></td>
             </tr>
           <% }) %>
-        </tbody>
-      </table>
-    <% } %>
+        <% } %>
+      </tbody>
+    </table>
   </div>
 </body>
 </html>
