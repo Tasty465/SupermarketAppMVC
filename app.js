@@ -8,8 +8,10 @@ const app = express();
 // MVC imports
 const ProductController = require('./Controllers/productcontroller');
 const UserController = require('./Controllers/usercontroller');
+const InvoiceController = require('./Controllers/invoicecontroller');
 const ProductModel = require('./Models/product');
 const UserModel = require('./Models/user');
+const InvoiceModel = require('./Models/invoice');
 
 // Multer setup for uploads
 const storage = multer.diskStorage({
@@ -167,27 +169,51 @@ app.post('/checkout', checkAuthenticated, (req, res) => {
       return Promise.all(updates).then(() => {
         console.log('Checkout successful for user=', req.session && req.session.user ? req.session.user.username : 'unknown');
        
-        let subtotal = 0;
-        const invoiceItems = cart.map(item => {
-          const lineTotal = item.price * item.quantity;
-          subtotal += lineTotal;
-          return { ...item, lineTotal };
-        });
-        const tax = subtotal * 0.08; 
-        const total = subtotal + tax;
-        
-        req.session.invoice = {
-          invoiceNumber: 'INV-' + Date.now(),
-          date: new Date().toLocaleDateString('en-US'),
-          items: invoiceItems,
-          subtotal,
-          tax,
-          total,
-          customer: req.session.user.username
-        };
-        
-        req.session.cart = [];
-        res.redirect('/invoice');
+            let subtotal = 0;
+            const invoiceItems = cart.map(item => {
+              const lineTotal = item.price * item.quantity;
+              subtotal += lineTotal;
+              return { ...item, lineTotal };
+            });
+            const tax = subtotal * 0.08;
+            const total = subtotal + tax;
+
+            const invoiceNumber = 'INV-' + Date.now();
+            const invoiceData = {
+              invoice_number: invoiceNumber,
+              user_id: req.session.user.id,
+              subtotal,
+              tax,
+              total
+            };
+
+            const itemsForDb = invoiceItems.map(it => ({
+              product_id: it.id,
+              product_name: it.productName,
+              price: it.price,
+              quantity: it.quantity,
+              line_total: it.lineTotal
+            }));
+
+            InvoiceModel.createInvoice(invoiceData, itemsForDb, (err, result) => {
+              if (err) {
+                console.error('Failed to persist invoice:', err);
+                // fallback to session-stored invoice so user can still see it immediately
+                req.session.invoice = {
+                  invoiceNumber,
+                  date: new Date().toLocaleDateString('en-US'),
+                  items: invoiceItems,
+                  subtotal,
+                  tax,
+                  total,
+                  customer: req.session.user.username
+                };
+                req.session.cart = [];
+                return res.redirect('/invoice');
+              }
+              req.session.cart = [];
+              res.redirect('/invoice/' + result.invoiceId);
+            });
       });
     })
     .catch(err => {
@@ -210,6 +236,9 @@ app.get('/invoice', checkAuthenticated, (req, res) => {
   res.render('invoice', { invoice, user: req.session.user });
 });
 
+// Persisted invoices: list and detail views
+app.get('/invoices', checkAuthenticated, InvoiceController.list);
+app.get('/invoice/:id', checkAuthenticated, InvoiceController.getById);
 app.get('/logout', (req, res) => {
   req.session.destroy(() => res.redirect('/'));
 });

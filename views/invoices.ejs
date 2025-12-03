@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <%- include('partials/head') %>
+  <title>Your Invoices</title>
+</head>
+<body>
+  <%- include('partials/navbar') %>
+
+  <div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+      <h2>Invoices</h2>
+      <a href="/" class="btn btn-outline-secondary">Back</a>
+    </div>
+
+    <% if (!invoices || invoices.length === 0) { %>
+      <div class="alert alert-info">No invoices found.</div>
+    <% } else { %>
+      <table class="table table-striped">
+        <thead class="table-dark">
+          <tr>
+            <th>Invoice #</th>
+            <th>Date</th>
+            <th>Subtotal</th>
+            <th>Tax</th>
+            <th>Total</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          <% invoices.forEach(function(inv){ %>
+            <tr>
+              <td><%= inv.invoice_number %></td>
+              <td><%= new Date(inv.created_at).toLocaleString() %></td>
+              <td>$<%= Number(inv.subtotal).toFixed(2) %></td>
+              <td>$<%= Number(inv.tax).toFixed(2) %></td>
+              <td>$<%= Number(inv.total).toFixed(2) %></td>
+              <td><a href="/invoice/<%= inv.id %>" class="btn btn-sm btn-primary">View</a></td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    <% } %>
+  </div>
+</body>
+</html>

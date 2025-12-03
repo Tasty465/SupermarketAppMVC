@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <%- include('partials/head') %>
+  <title>Invoice <%= invoice.invoice_number %></title>
+</head>
+<body>
+  <%- include('partials/navbar') %>
+
+  <div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+      <h2>Invoice <%= invoice.invoice_number %></h2>
+      <a href="/invoices" class="btn btn-outline-secondary">Back to Invoices</a>
+    </div>
+
+    <div class="card mb-3">
+      <div class="card-body">
+        <p><strong>Invoice #: </strong><%= invoice.invoice_number %></p>
+        <p><strong>Date: </strong><%= new Date(invoice.created_at).toLocaleString() %></p>
+        <p><strong>Customer ID: </strong><%= invoice.user_id %></p>
+        <p><strong>Subtotal: </strong>$<%= Number(invoice.subtotal).toFixed(2) %></p>
+        <p><strong>Tax: </strong>$<%= Number(invoice.tax).toFixed(2) %></p>
+        <p><strong>Total: </strong>$<%= Number(invoice.total).toFixed(2) %></p>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header bg-light">Items</div>
+      <div class="card-body">
+        <% if (!invoice.items || invoice.items.length === 0) { %>
+          <div class="alert alert-info">No items recorded for this invoice.</div>
+        <% } else { %>
+          <table class="table table-sm">
+            <thead>
+              <tr>
+                <th>Product</th>
+                <th>Price</th>
+                <th>Qty</th>
+                <th>Line Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% invoice.items.forEach(function(it){ %>
+                <tr>
+                  <td><%= it.product_name || ('#' + (it.product_id || '')) %></td>
+                  <td>$<%= Number(it.price).toFixed(2) %></td>
+                  <td><%= it.quantity %></td>
+                  <td>$<%= Number(it.line_total).toFixed(2) %></td>
+                </tr>
+              <% }); %>
+            </tbody>
+          </table>
+        <% } %>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
