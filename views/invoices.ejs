@@ -20,7 +20,13 @@
     <table class="table table-striped text-dark">
       <thead class="text-dark bg-light">
         <tr>
+          <% if (user && user.role === 'admin') { %>
+            <th class="text-dark">Invoice ID</th>
+          <% } %>
           <th class="text-dark">Invoice</th>
+          <% if (user && user.role === 'admin') { %>
+            <th class="text-dark">User ID</th>
+          <% } %>
           <th class="text-dark">Created On</th>
           <th class="text-dark">Total before tax</th>
           <th class="text-dark">Total tax</th>
@@ -31,12 +37,18 @@
       <tbody>
         <% if (!invoices || invoices.length === 0) { %>
           <tr>
-            <td colspan="6" class="text-center">No invoices found.</td>
+            <td colspan="<%= (user && user.role === 'admin') ? 8 : 6 %>" class="text-center">No invoices found.</td>
           </tr>
         <% } else { %>
           <% invoices.forEach(function(inv){ %>
             <tr>
+              <% if (user && user.role === 'admin') { %>
+                <td><%= inv.id %></td>
+              <% } %>
               <td><%= inv.invoice_number %></td>
+              <% if (user && user.role === 'admin') { %>
+                <td><%= inv.user_id %></td>
+              <% } %>
               <td><%= new Date(inv.created_at).toLocaleString() %></td>
               <td>$<%= Number(inv.subtotal).toFixed(2) %></td>
               <td>$<%= Number(inv.tax).toFixed(2) %></td>
