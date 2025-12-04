@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <%- include('partials/head') %>
+  <title>Dashboard</title>
+  <style>
+    .welcome-card {
+      color: white;
+      height: 220px;
+      border-radius: .5rem;
+      background-size: cover;
+      background-position: center;
+      position: relative;
+      overflow: hidden;
+    }
+    .welcome-overlay {
+      position: absolute;
+      inset: 0;
+      background: rgba(0, 86, 39, 0.35);
+    }
+    .welcome-content {
+      position: relative;
+      z-index: 2;
+      padding: 24px;
+    }
+    .product-card img { height:140px; object-fit:cover; }
+  </style>
+</head>
+<body>
+  <%- include('partials/navbar') %>
+
+  <div class="container mt-4">
+    <div class="row mb-4">
+      <div class="col-12">
+        <div class="welcome-card" style="background-image: url('/images/dashboard_bg.jpg');">
+          <div class="welcome-overlay"></div>
+          <div class="welcome-content d-flex justify-content-between align-items-center">
+            <div>
+              <h1 class="display-5">Welcome, <%= user && user.username ? user.username : 'Customer' %>!</h1>
+              <p class="lead">Here are some products you might like — happy shopping.</p>
+            </div>
+            <div style="width: 220px; text-align: right;">
+              <a href="/shopping" class="btn btn-light">Start Shopping</a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="row mb-4">
+      <div class="col-12">
+        <h4>Featured Products</h4>
+        <% if (featured && featured.length) { %>
+          <div id="featuredCarousel" class="carousel slide" data-bs-ride="carousel">
+            <div class="carousel-inner">
+              <% featured.forEach(function(p, idx){ %>
+                <div class="carousel-item <%= idx === 0 ? 'active' : '' %>">
+                  <div class="row g-3 align-items-center">
+                    <div class="col-md-4">
+                      <img src="/images/<%= p.image %>" class="d-block w-100" style="height:240px;object-fit:cover;">
+                    </div>
+                    <div class="col-md-8">
+                      <h5><a href="/product/<%= p.id %>"><%= p.productName %></a></h5>
+                      <p class="text-muted">In stock: <%= p.quantity %></p>
+                      <p class="fw-bold">$<%= Number(p.price || 0).toFixed(2) %></p>
+                      <p><a href="/product/<%= p.id %>" class="btn btn-primary">View Product</a></p>
+                    </div>
+                  </div>
+                </div>
+              <% }); %>
+            </div>
+            <button class="carousel-control-prev" type="button" data-bs-target="#featuredCarousel" data-bs-slide="prev">
+              <span class="carousel-control-prev-icon" aria-hidden="true"></span>
+              <span class="visually-hidden">Previous</span>
+            </button>
+            <button class="carousel-control-next" type="button" data-bs-target="#featuredCarousel" data-bs-slide="next">
+              <span class="carousel-control-next-icon" aria-hidden="true"></span>
+              <span class="visually-hidden">Next</span>
+            </button>
+          </div>
+        <% } else { %>
+          <div class="alert alert-info">No featured products available.</div>
+        <% } %>
+      </div>
+    </div>
+
+    <div class="row">
+      <div class="col-12">
+        <h4>Popular Products</h4>
+      </div>
+      <% if (popular && popular.length) { %>
+        <% popular.forEach(function(p){ %>
+          <div class="col-md-3 mb-4">
+            <div class="card product-card h-100">
+              <img src="/images/<%= p.image %>" class="card-img-top">
+              <div class="card-body d-flex flex-column">
+                <h6 class="card-title"><a href="/product/<%= p.id %>"><%= p.productName %></a></h6>
+                <p class="text-muted">In stock: <%= p.quantity %></p>
+                <div class="mt-auto d-flex justify-content-between align-items-center">
+                  <div class="fw-bold">$<%= Number(p.price || 0).toFixed(2) %></div>
+                  <% if (p.quantity > 0) { %>
+                    <form action="/add-to-cart/<%= p.id %>" method="POST" class="d-flex">
+                      <input type="hidden" name="quantity" value="1">
+                      <button class="btn btn-sm btn-primary">Buy</button>
+                    </form>
+                  <% } else { %>
+                    <button class="btn btn-sm btn-secondary" disabled>Sold Out</button>
+                  <% } %>
+                </div>
+              </div>
+            </div>
+          </div>
+        <% }); %>
+      <% } else { %>
+        <div class="col-12">
+          <div class="alert alert-info">No popular products available.</div>
+        </div>
+      <% } %>
+    </div>
+  </div>
+</body>
+</html>

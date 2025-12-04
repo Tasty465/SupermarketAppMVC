@@ -191,10 +191,21 @@ const UserController = {
 			} else if (minimalUser.role === 'admin') {
 				redirectTo = '/inventory';
 			} else {
-				redirectTo = '/shopping';
+				// send regular users to a dashboard page
+				redirectTo = '/dashboard';
 			}
 
-			return res.redirect(redirectTo);
+			// log redirect decision for debugging
+			console.log('Login successful for', minimalUser.username, 'role=', minimalUser.role, 'redirectTo=', redirectTo);
+			// ensure session is saved before redirect to make session available on next request
+			if (req.session && typeof req.session.save === 'function') {
+				req.session.save((saveErr) => {
+					if (saveErr) console.warn('Session save error:', saveErr);
+					return res.redirect(redirectTo);
+				});
+			} else {
+				return res.redirect(redirectTo);
+			}
 		} catch (err) {
 			console.error('Error during login:', err);
 			return res.status(500).send('Internal Server Error');

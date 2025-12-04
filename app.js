@@ -68,6 +68,24 @@ const checkAdmin = (req, res, next) => {
 
 app.get('/', ProductController.list);
 
+// Dashboard for regular users (shows featured / popular products)
+app.get('/dashboard', checkAuthenticated, (req, res) => {
+  const cb = (err, products) => {
+    if (err) {
+      console.error('Error fetching products for dashboard:', err);
+      return res.status(500).send('Internal Server Error');
+    }
+
+    // pick a few featured products (first 5) and some popular products (random sample)
+    const featured = Array.isArray(products) ? products.slice(0, 5) : [];
+    const shuffled = Array.isArray(products) ? products.slice().sort(() => 0.5 - Math.random()) : [];
+    const popular = shuffled.slice(0, 6);
+
+    res.render('dashboard', { user: req.session.user, featured, popular });
+  };
+  ProductModel.getAll(cb);
+});
+
 
 app.get('/inventory', checkAuthenticated, checkAdmin, (req, res) => {
   const q = (req.query.q || '').trim();
