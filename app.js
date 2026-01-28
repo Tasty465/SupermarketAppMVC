@@ -22,6 +22,7 @@ const InvoiceModel = require('./Models/invoice');
 // Payment service imports
 const NETSService = require('./services/nets');
 const StripeService = require('./services/stripe');
+const cartcontroller = require('./Controllers/cartcontroller');
 
 // Multer setup for uploads
 const storage = multer.diskStorage({
@@ -303,14 +304,37 @@ app.get('/updateProduct/:id', checkAuthenticated, checkAdmin, (req, res) => {
     res.render('updateProduct', { product, user: req.session.user });
   });
 });
+app.post('/updateCart/:id', checkAuthenticated, (req, res) => {
+  const productId = parseInt(req.params.id, 10);
+  const newQty = parseInt(req.body.quantity, 10);
+  const cart = req.session.cart || [];
+  const itemIndex = cart.findIndex(item => item.id === productId);
+  if (itemIndex !== -1) {
+    cart[itemIndex].quantity = newQty;
+    req.session.cart = cart;
+  }
+  res.redirect('/cart');
+});
+app.get('/deleteCart/:id', checkAuthenticated, (req, res) => {
+  const productId = parseInt(req.params.id, 10);
+  let cart = req.session.cart || [];
+  cart = cart.filter(item => item.id !== productId);
+  req.session.cart = cart;
+  res.redirect('/cart');
+}),
+
+
+
 app.post('/updateProduct/:id', checkAuthenticated, checkAdmin, upload.single('image'), ProductController.update);
-
 app.get('/deleteProduct/:id', checkAuthenticated, checkAdmin, ProductController.delete);
-
+app.get('/product/:id/delete', ProductController.delete);
 app.get('/users', checkAuthenticated, checkAdmin, UserController.list);
 app.get('/user/:id', checkAuthenticated, checkAdmin, UserController.getById);
 app.post('/user/:id/update', checkAuthenticated, checkAdmin, UserController.update);
 app.get('/user/:id/delete', checkAuthenticated, checkAdmin, UserController.delete);
+app.post('/updatecart/:id',cartcontroller.update);
+app.get('/deletecart/:id',cartcontroller.remove); 
+
 
 // ==================== PAYMENT ROUTES ====================
 

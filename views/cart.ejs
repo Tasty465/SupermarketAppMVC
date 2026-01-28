@@ -46,8 +46,8 @@
                 <td><%= cart[i].quantity %></td>
                 <td>$<%= (cart[i].price * cart[i].quantity).toFixed(2) %></td>
                 <td>
-                    <a href="/cart/editProduct/<%= cart[i].id %>" class="btn btn-sm btn-primary">Edit</a>
-                    <a href="/cart/delete/<%= cart[i].id %>" class="btn btn-sm btn-danger">Delete</a>
+                    <a href="/updatecart/<%= cart[i].id %>" class="btn btn-sm btn-primary">Edit</a>
+                    <a href="/deletecart/<%= cart[i].id %>" class="btn btn-sm btn-danger">Delete</a>
                 </td>
             </tr>
             <% total += cart[i].price * cart[i].quantity; %>
