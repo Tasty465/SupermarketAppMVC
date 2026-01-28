@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <%- include('../partials/head') %>
+    <title>Select Payment Method</title>
+    <style>
+        .payment-container {
+            max-width: 600px;
+            margin: 40px auto;
+            padding: 20px;
+        }
+        .payment-methods {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin: 30px 0;
+        }
+        .payment-card {
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            padding: 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .payment-card:hover {
+            border-color: #007bff;
+            box-shadow: 0 4px 12px rgba(0, 123, 255, 0.15);
+            transform: translateY(-2px);
+        }
+        .payment-card.selected {
+            border-color: #28a745;
+            background-color: #f0f8f5;
+        }
+        .payment-icon {
+            font-size: 48px;
+            margin-bottom: 15px;
+        }
+        .payment-title {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        .payment-desc {
+            font-size: 14px;
+            color: #666;
+            margin-bottom: 10px;
+        }
+        .total-section {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+            text-align: right;
+        }
+        .total-section h4 {
+            margin: 0;
+            color: #333;
+        }
+        .btn-proceed {
+            width: 100%;
+            padding: 12px;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <%- include('../partials/navbar') %>
+
+    <div class="container payment-container">
+        <h1 class="text-center mb-4">Select Payment Method</h1>
+        
+        <div class="total-section">
+            <h4>Total Amount: <span class="text-success">$<%= total %></span></h4>
+        </div>
+
+        <form id="paymentForm">
+            <div class="payment-methods">
+                <!-- NETS QR Payment -->
+                <div class="payment-card" onclick="selectPayment('nets-qr')">
+                    <div class="payment-icon">💳</div>
+                    <div class="payment-title">NETS QR</div>
+                    <div class="payment-desc">Scan QR code with your bank app</div>
+                    <small class="text-muted">Fast & Secure</small>
+                    <input type="radio" name="paymentMethod" value="nets-qr" style="display: none;">
+                </div>
+
+                <!-- Stripe Payment -->
+                <div class="payment-card" onclick="selectPayment('stripe')">
+                    <div class="payment-icon">💰</div>
+                    <div class="payment-title">Stripe</div>
+                    <div class="payment-desc">Credit/Debit Card Payment</div>
+                    <small class="text-muted">Secure & Encrypted</small>
+                    <input type="radio" name="paymentMethod" value="stripe" style="display: none;">
+                </div>
+            </div>
+
+            <button type="button" class="btn btn-primary btn-proceed" onclick="proceedPayment()">
+                Proceed to Payment
+            </button>
+        </form>
+
+        <div class="text-center mt-3">
+            <a href="/cart" class="btn btn-outline-secondary">Back to Cart</a>
+        </div>
+    </div>
+
+    <script>
+        function selectPayment(method) {
+            // Remove selected class from all cards
+            document.querySelectorAll('.payment-card').forEach(card => {
+                card.classList.remove('selected');
+            });
+
+            // Add selected class to clicked card
+            event.currentTarget.classList.add('selected');
+
+            // Set the radio button value
+            document.querySelector(`input[value="${method}"]`).checked = true;
+        }
+
+        function proceedPayment() {
+            const selectedMethod = document.querySelector('input[name="paymentMethod"]:checked');
+            
+            if (!selectedMethod) {
+                alert('Please select a payment method');
+                return;
+            }
+
+            const method = selectedMethod.value;
+
+            if (method === 'nets-qr') {
+                proceedNETSQR();
+            } else if (method === 'stripe') {
+                proceedStripe();
+            }
+        }
+
+        function proceedNETSQR() {
+            const total = '<%= total %>';
+            fetch('/payment/nets-qr/generate', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ cartTotal: parseFloat(total) })
+            })
+            .then(response => response.text())
+            .then(html => {
+                document.body.innerHTML = html;
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Failed to generate QR code. Please try again.');
+            });
+        }
+
+        function proceedStripe() {
+            window.location.href = '/payment/stripe/checkout';
+        }
+    </script>
+</body>
+</html>

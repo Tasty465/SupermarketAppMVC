@@ -1,9 +1,15 @@
+require('dotenv').config();
 const express = require('express');
 const session = require('express-session');
 const flash = require('connect-flash');
 const multer = require('multer');
 const path = require('path');
+const axios = require('axios');
+const bodyParser = require('body-parser');
+
 const app = express();
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
 // MVC imports
 const ProductController = require('./Controllers/productcontroller');
@@ -12,6 +18,10 @@ const InvoiceController = require('./Controllers/invoicecontroller');
 const ProductModel = require('./Models/product');
 const UserModel = require('./Models/user');
 const InvoiceModel = require('./Models/invoice');
+
+// Payment service imports
+const NETSService = require('./services/nets');
+const StripeService = require('./services/stripe');
 
 // Multer setup for uploads
 const storage = multer.diskStorage({
@@ -24,6 +34,8 @@ const upload = multer({ storage });
 app.set('view engine', 'ejs');
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(express.urlencoded({ extended: false }));
+app.use(bodyParser.json());
+app.use(bodyParser.raw({ type: 'application/octet-stream' }));
 
 app.use(session({
   secret: 'secret',
@@ -299,6 +311,279 @@ app.get('/users', checkAuthenticated, checkAdmin, UserController.list);
 app.get('/user/:id', checkAuthenticated, checkAdmin, UserController.getById);
 app.post('/user/:id/update', checkAuthenticated, checkAdmin, UserController.update);
 app.get('/user/:id/delete', checkAuthenticated, checkAdmin, UserController.delete);
+
+// ==================== PAYMENT ROUTES ====================
+
+// Payment method selection page
+app.get('/payment', checkAuthenticated, (req, res) => {
+  const cart = req.session.cart || [];
+  if (!cart.length) {
+    req.flash('error', 'Your cart is empty');
+    return res.redirect('/cart');
+  }
+  
+  let subtotal = 0;
+  cart.forEach(item => {
+    subtotal += item.price * item.quantity;
+  });
+  const tax = subtotal * 0.09;
+  const total = subtotal + tax;
+
+  res.render('payment/selectPaymentMethod', { 
+    total: total.toFixed(2),
+    stripePublicKey: process.env.STRIPE_PUBLIC_KEY,
+    user: req.session.user 
+  });
+});
+
+// Stripe Checkout Page
+app.get('/payment/stripe/checkout', checkAuthenticated, (req, res) => {
+  const cart = req.session.cart || [];
+  if (!cart.length) {
+    req.flash('error', 'Your cart is empty');
+    return res.redirect('/cart');
+  }
+
+  let subtotal = 0;
+  cart.forEach(item => {
+    subtotal += item.price * item.quantity;
+  });
+  const tax = subtotal * 0.09;
+  const total = subtotal + tax;
+
+  res.render('payment/stripeCheckout', { 
+    total: total.toFixed(2),
+    stripePublicKey: process.env.STRIPE_PUBLIC_KEY,
+    user: req.session.user 
+  });
+});
+
+// NETS QR Payment Routes
+app.post('/payment/nets-qr/generate', checkAuthenticated, NETSService.generateQrCode);
+
+app.get('/sse/payment-status/:txnRetrievalRef', async (req, res) => {
+  res.set({
+    'Content-Type': 'text/event-stream',
+    'Cache-Control': 'no-cache',
+    'Connection': 'keep-alive'
+  });
+
+  const txnRetrievalRef = req.params.txnRetrievalRef;
+  let pollCount = 0;
+  const maxPolls = 60;
+  let frontendTimeoutStatus = 0;
+
+  const interval = setInterval(async () => {
+    pollCount++;
+
+    try {
+      const response = await NETSService.queryPaymentStatus(txnRetrievalRef, frontendTimeoutStatus);
+      console.log("Polling response:", response);
+      res.write(`data: ${JSON.stringify(response)}\n\n`);
+    
+      const resData = response.result?.data;
+
+      if (resData && resData.response_code == "00" && resData.txn_status === 1) {
+        res.write(`data: ${JSON.stringify({ success: true })}\n\n`);
+        clearInterval(interval);
+        res.end();
+      } else if (frontendTimeoutStatus == 1 && resData && (resData.response_code !== "00" || resData.txn_status === 2)) {
+        res.write(`data: ${JSON.stringify({ fail: true, ...resData })}\n\n`);
+        clearInterval(interval);
+        res.end();
+      }
+
+    } catch (err) {
+      clearInterval(interval);
+      res.write(`data: ${JSON.stringify({ error: err.message })}\n\n`);
+      res.end();
+    }
+
+    if (pollCount >= maxPolls) {
+      clearInterval(interval);
+      frontendTimeoutStatus = 1;
+      res.write(`data: ${JSON.stringify({ fail: true, error: "Timeout" })}\n\n`);
+      res.end();
+    }
+  }, 5000);
+
+  req.on('close', () => {
+    clearInterval(interval);
+  });
+});
+
+app.get('/payment/nets-qr/success', checkAuthenticated, (req, res) => {
+  const cart = req.session.cart || [];
+  if (!cart.length) {
+    req.flash('error', 'No pending transaction');
+    return res.redirect('/cart');
+  }
+
+  let subtotal = 0;
+  const invoiceItems = cart.map(item => {
+    const lineTotal = item.price * item.quantity;
+    subtotal += lineTotal;
+    return { ...item, lineTotal };
+  });
+  const tax = subtotal * 0.09;
+  const total = subtotal + tax;
+
+  const invoiceNumber = 'INV-' + Date.now();
+  const invoiceData = {
+    invoice_number: invoiceNumber,
+    user_id: req.session.user.id,
+    subtotal,
+    tax,
+    total,
+    payment_method: 'NETS QR'
+  };
+
+  const itemsForDb = invoiceItems.map(it => ({
+    product_id: it.id,
+    product_name: it.productName,
+    price: it.price,
+    quantity: it.quantity,
+    line_total: it.lineTotal
+  }));
+
+  InvoiceModel.createInvoice(invoiceData, itemsForDb, (err, result) => {
+    if (err) {
+      console.error('Failed to persist invoice:', err);
+      req.session.invoice = {
+        invoiceNumber,
+        date: new Date().toLocaleDateString('en-US'),
+        items: invoiceItems,
+        subtotal,
+        tax,
+        total,
+        customer: req.session.user.username,
+        paymentMethod: 'NETS QR',
+        paymentStatus: 'Completed'
+      };
+      req.session.cart = [];
+      return res.render('payment/paymentSuccess', { invoice: req.session.invoice, method: 'NETS QR' });
+    }
+    req.session.cart = [];
+    res.render('payment/paymentSuccess', { 
+      invoice: {
+        invoiceNumber,
+        id: result.invoiceId,
+        date: new Date().toLocaleDateString('en-US'),
+        items: invoiceItems,
+        subtotal,
+        tax,
+        total,
+        customer: req.session.user.username,
+        paymentMethod: 'NETS QR',
+        paymentStatus: 'Completed'
+      },
+      method: 'NETS QR' 
+    });
+  });
+});
+
+app.get('/payment/nets-qr/fail', checkAuthenticated, (req, res) => {
+  res.render('payment/paymentFail', { 
+    method: 'NETS QR',
+    message: 'Your NETS QR payment could not be completed. Please try again.'
+  });
+});
+
+// Stripe Payment Routes
+app.post('/payment/stripe/create-intent', checkAuthenticated, StripeService.createPaymentIntent);
+
+app.post('/payment/stripe/confirm', checkAuthenticated, async (req, res) => {
+  const { paymentIntentId } = req.body;
+  
+  try {
+    const paymentStatus = await StripeService.confirmPayment(paymentIntentId);
+    
+    if (paymentStatus.status === 'succeeded') {
+      const cart = req.session.cart || [];
+      if (!cart.length) {
+        return res.json({ error: 'No items in cart' });
+      }
+
+      let subtotal = 0;
+      const invoiceItems = cart.map(item => {
+        const lineTotal = item.price * item.quantity;
+        subtotal += lineTotal;
+        return { ...item, lineTotal };
+      });
+      const tax = subtotal * 0.09;
+      const total = subtotal + tax;
+
+      const invoiceNumber = 'INV-' + Date.now();
+      const invoiceData = {
+        invoice_number: invoiceNumber,
+        user_id: req.session.user.id,
+        subtotal,
+        tax,
+        total,
+        payment_method: 'Stripe'
+      };
+
+      const itemsForDb = invoiceItems.map(it => ({
+        product_id: it.id,
+        product_name: it.productName,
+        price: it.price,
+        quantity: it.quantity,
+        line_total: it.lineTotal
+      }));
+
+      InvoiceModel.createInvoice(invoiceData, itemsForDb, (err, result) => {
+        req.session.cart = [];
+        if (err) {
+          console.error('Failed to persist invoice:', err);
+          req.session.invoice = {
+            invoiceNumber,
+            date: new Date().toLocaleDateString('en-US'),
+            items: invoiceItems,
+            subtotal,
+            tax,
+            total,
+            customer: req.session.user.username,
+            paymentMethod: 'Stripe',
+            paymentStatus: 'Completed'
+          };
+          return res.json({ success: true, invoiceId: null });
+        }
+        res.json({ success: true, invoiceId: result.invoiceId });
+      });
+    } else {
+      res.json({ error: 'Payment not completed' });
+    }
+  } catch (error) {
+    console.error('Error confirming payment:', error);
+    res.json({ error: error.message });
+  }
+});
+
+app.get('/payment/stripe/success', checkAuthenticated, (req, res) => {
+  if (req.session.invoice) {
+    res.render('payment/paymentSuccess', { 
+      invoice: req.session.invoice,
+      method: 'Stripe' 
+    });
+  } else {
+    res.render('payment/paymentSuccess', { 
+      invoice: {
+        invoiceNumber: 'INV-' + Date.now(),
+        date: new Date().toLocaleDateString('en-US'),
+        paymentMethod: 'Stripe',
+        paymentStatus: 'Completed'
+      },
+      method: 'Stripe' 
+    });
+  }
+});
+
+app.get('/payment/stripe/fail', checkAuthenticated, (req, res) => {
+  res.render('payment/paymentFail', { 
+    method: 'Stripe',
+    message: 'Your Stripe payment could not be completed. Please try again.'
+  });
+});
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));

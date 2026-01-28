@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <%- include('../partials/head') %>
+    <title>Stripe Payment</title>
+    <script src="https://js.stripe.com/v3/"></script>
+    <style>
+        .stripe-container {
+            max-width: 500px;
+            margin: 40px auto;
+            padding: 20px;
+        }
+        .payment-box {
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 30px;
+            background: white;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+        .amount-display {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 30px;
+            text-align: center;
+        }
+        .amount-display h3 {
+            margin: 0;
+            color: #333;
+        }
+        .amount-display .amount {
+            font-size: 32px;
+            font-weight: bold;
+            color: #28a745;
+            margin: 10px 0;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: #333;
+            font-weight: 500;
+        }
+        #card-element {
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            background: white;
+        }
+        .StripeElement--focus {
+            box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.25);
+        }
+        .error {
+            color: #dc3545;
+            margin-top: 5px;
+            font-size: 14px;
+        }
+        .success {
+            color: #28a745;
+            margin-top: 5px;
+            font-size: 14px;
+        }
+        .spinner {
+            color: #007bff;
+            display: none;
+        }
+        .btn-payment {
+            width: 100%;
+            padding: 12px;
+            margin-top: 20px;
+            font-size: 16px;
+        }
+        .btn-payment:disabled {
+            opacity: 0.65;
+            cursor: not-allowed;
+        }
+    </style>
+</head>
+<body>
+    <%- include('../partials/navbar') %>
+
+    <div class="container stripe-container">
+        <h1 class="text-center mb-4">💳 Stripe Payment</h1>
+
+        <div class="payment-box">
+            <div class="amount-display">
+                <h3>Payment Amount</h3>
+                <div class="amount">$<%= total %></div>
+            </div>
+
+            <form id="payment-form">
+                <div class="form-group">
+                    <label for="card-name">Full Name</label>
+                    <input type="text" id="card-name" class="form-control" placeholder="John Doe" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="card-email">Email</label>
+                    <input type="email" id="card-email" class="form-control" placeholder="john@example.com" value="<%= user?.email || '' %>" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="card-element">Card Details</label>
+                    <div id="card-element"></div>
+                    <div id="card-errors" class="error" role="alert"></div>
+                </div>
+
+                <button type="submit" id="card-button" class="btn btn-success btn-payment" disabled>
+                    Pay $<%= total %>
+                </button>
+                <div id="payment-message" class="mt-3"></div>
+            </form>
+
+            <div class="text-center mt-3">
+                <a href="/payment" class="btn btn-outline-secondary">Back to Payment Methods</a>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const stripe = Stripe('<%= stripePublicKey %>');
+        const elements = stripe.elements();
+        const cardElement = elements.create('card');
+        cardElement.mount('#card-element');
+
+        const cardButton = document.getElementById('card-button');
+        const paymentForm = document.getElementById('payment-form');
+        const cardErrors = document.getElementById('card-errors');
+        const paymentMessage = document.getElementById('payment-message');
+
+        // Handle real-time validation errors
+        cardElement.on('change', (event) => {
+            cardButton.disabled = event.empty;
+            cardErrors.textContent = event.error ? event.error.message : '';
+        });
+
+        paymentForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            cardButton.disabled = true;
+            cardButton.innerHTML = '<span class="spinner spinner-border spinner-border-sm me-2"></span>Processing...';
+
+            const { paymentMethod, error } = await stripe.createPaymentMethod('card', cardElement, {
+                billing_details: {
+                    name: document.getElementById('card-name').value,
+                    email: document.getElementById('card-email').value
+                }
+            });
+
+            if (error) {
+                cardErrors.textContent = error.message;
+                cardButton.disabled = false;
+                cardButton.innerHTML = 'Pay $<%= total %>';
+                return;
+            }
+
+            // Create payment intent and confirm
+            try {
+                const response = await fetch('/payment/stripe/create-intent', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ cartTotal: parseFloat('<%= total %>') })
+                });
+
+                const { clientSecret, paymentIntentId } = await response.json();
+
+                if (!clientSecret) {
+                    throw new Error('Failed to create payment intent');
+                }
+
+                // Confirm payment with Stripe
+                const { error: confirmError, paymentIntent } = await stripe.confirmCardPayment(clientSecret, {
+                    payment_method: paymentMethod.id
+                });
+
+                if (confirmError) {
+                    cardErrors.textContent = confirmError.message;
+                    cardButton.disabled = false;
+                    cardButton.innerHTML = 'Pay $<%= total %>';
+                } else if (paymentIntent.status === 'succeeded') {
+                    // Confirm with backend
+                    const confirmResponse = await fetch('/payment/stripe/confirm', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ paymentIntentId: paymentIntentId })
+                    });
+
+                    const result = await confirmResponse.json();
+
+                    if (result.success) {
+                        paymentMessage.innerHTML = '<div class="alert alert-success">Payment successful! Redirecting...</div>';
+                        setTimeout(() => {
+                            window.location.href = '/payment/stripe/success';
+                        }, 2000);
+                    } else {
+                        cardErrors.textContent = result.error || 'Payment confirmation failed';
+                        cardButton.disabled = false;
+                        cardButton.innerHTML = 'Pay $<%= total %>';
+                    }
+                } else {
+                    cardErrors.textContent = 'Payment status: ' + paymentIntent.status;
+                    cardButton.disabled = false;
+                    cardButton.innerHTML = 'Pay $<%= total %>';
+                }
+            } catch (error) {
+                cardErrors.textContent = error.message;
+                cardButton.disabled = false;
+                cardButton.innerHTML = 'Pay $<%= total %>';
+            }
+        });
+    </script>
+</body>
+</html>

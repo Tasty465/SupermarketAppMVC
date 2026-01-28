@@ -145,6 +145,13 @@
       <div class="info-block">
         <h6>Store</h6>
         <p><strong>Supermarket App</strong></p>
+        <% if (invoice.paymentMethod) { %>
+          <h6 style="margin-top: 12px;">Payment Method</h6>
+          <p><%= invoice.paymentMethod %></p>
+          <% if (invoice.paymentStatus) { %>
+            <span class="badge bg-success"><%= invoice.paymentStatus %></span>
+          <% } %>
+        <% } %>
         
       </div>
     </div>

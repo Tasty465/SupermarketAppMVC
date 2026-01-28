@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <%- include('../partials/head') %>
+    <title>Payment Failed</title>
+    <style>
+        body {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .fail-container {
+            background: white;
+            border-radius: 15px;
+            padding: 50px 40px;
+            box-shadow: 0 10px 50px rgba(0, 0, 0, 0.2);
+            max-width: 500px;
+            text-align: center;
+        }
+        .fail-icon {
+            font-size: 80px;
+            color: #dc3545;
+            margin-bottom: 20px;
+            animation: shake 0.5s;
+        }
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-10px); }
+            75% { transform: translateX(10px); }
+        }
+        .fail-title {
+            font-size: 28px;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 10px;
+        }
+        .fail-message {
+            font-size: 16px;
+            color: #666;
+            margin-bottom: 30px;
+        }
+        .error-details {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 30px;
+            text-align: left;
+            border-left: 4px solid #dc3545;
+        }
+        .error-details h5 {
+            color: #dc3545;
+            margin-bottom: 10px;
+            font-weight: 600;
+        }
+        .error-details p {
+            margin: 0;
+            color: #666;
+            font-size: 14px;
+        }
+        .btn-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+        .btn-group a,
+        .btn-group button {
+            flex: 1;
+        }
+    </style>
+</head>
+<body>
+    <div class="fail-container">
+        <div class="fail-icon">✕</div>
+        <div class="fail-title">Payment Failed</div>
+        <div class="fail-message">
+            Your <%= method %> payment could not be completed.
+        </div>
+
+        <% if (message) { %>
+            <div class="error-details">
+                <h5>Error Details</h5>
+                <p><%= message %></p>
+            </div>
+        <% } %>
+
+        <div class="alert alert-info">
+            <small>
+                Your cart items have been saved. You can try a different payment method or contact support if you need help.
+            </small>
+        </div>
+
+        <div class="btn-group">
+            <a href="/payment" class="btn btn-primary">Try Another Method</a>
+            <a href="/cart" class="btn btn-outline-primary">Back to Cart</a>
+        </div>
+
+        <div style="margin-top: 20px; font-size: 12px; color: #999;">
+            <p>If you continue to experience issues, please <a href="/">contact our support team</a>.</p>
+        </div>
+    </div>
+</body>
+</html>
