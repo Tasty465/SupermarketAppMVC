@@ -33,6 +33,7 @@
             <th>Price</th>
             <th>Quantity</th>
             <th>Total</th>
+            <th>Edit/Delete</th>
             
           </tr>
         </thead>
@@ -44,14 +45,17 @@
                 <td><img src="/images/<%= cart[i].image %>" width="80" class="img-thumbnail"></td>
                 <td><%= cart[i].quantity %></td>
                 <td>$<%= (cart[i].price * cart[i].quantity).toFixed(2) %></td>
-                <td>delete</td>
+                <td>
+                    <a href="/cart/editProduct/<%= cart[i].id %>" class="btn btn-sm btn-primary">Edit</a>
+                    <a href="/cart/delete/<%= cart[i].id %>" class="btn btn-sm btn-danger">Delete</a>
+                </td>
             </tr>
             <% total += cart[i].price * cart[i].quantity; %>
           <% }; %>
         </tbody>
       </table>
       <h4>Total: $<%= total.toFixed(2) %></h4>
-
+      
       <div class="mt-4">
         <a href="/shopping" class="btn btn-secondary">Back to Shopping</a>
         <form action="/payment" method="GET" class="d-inline ms-2">
