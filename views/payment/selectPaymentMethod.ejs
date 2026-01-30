@@ -93,6 +93,14 @@
                     <small class="text-muted">Secure & Encrypted</small>
                     <input type="radio" name="paymentMethod" value="stripe" style="display: none;">
                 </div>
+
+                <div class="payment-card" onclick="selectPayment('paypal')">
+                    <div class="payment-icon">🅿️</div>
+                    <div class="payment-title">PayPal</div>
+                    <div class="payment-desc">Pay via PayPal account or credit card</div>
+                    <small class="text-muted">PayPal</small>
+                    <input type="radio" name="paymentMethod" value="paypal" style="display: none;">
+                </div>
             </div>
 
             <button type="button" class="btn btn-primary btn-proceed" onclick="proceedPayment()">
@@ -131,8 +139,11 @@
 
             if (method === 'nets-qr') {
                 proceedNETSQR();
-            } else if (method === 'stripe') {
+            }
+            if (method === 'stripe') {
                 proceedStripe();
+            } else if (method === 'paypal') {
+                proceedPaypal();
             }
         }
 
@@ -157,6 +168,10 @@
 
         function proceedStripe() {
             window.location.href = '/payment/stripe/checkout';
+        }
+
+        function proceedPaypal() {
+            window.location.href = '/payment/Paypal';
         }
     </script>
 </body>

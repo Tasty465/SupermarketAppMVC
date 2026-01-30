@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <%- include('../partials/head') %>
+    <title>PayPal Payment</title>
+    <script src="https://www.paypal.com/sdk/js?client-id=Ae-4_a7WfGktuucYxtkpxwiZb6pDyUNSydYqJ29vh0gtOOiq95641c4RWU_zj5JdZQIVDboT5LbKgM-M&currency=USD"></script>
+    <style>
+        .paypal-container {
+            max-width: 500px;
+            margin: 40px auto;
+            padding: 20px;
+        }
+        .payment-box {
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 30px;
+            background: white;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            text-align: center;
+        }
+        .amount-display {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 30px;
+        }
+        .amount-display h3 {
+            margin: 0;
+            color: #333;
+        }
+        .amount-display .amount {
+            font-size: 32px;
+            font-weight: bold;
+            color: #28a745;
+            margin: 10px 0;
+        }
+        .status-message {
+            margin-top: 20px;
+            font-size: 16px;
+        }
+        .btn-back {
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <%- include('../partials/navbar') %>
+
+    <div class="container paypal-container">
+        <h1 class="text-center mb-4">💰 PayPal Payment</h1>
+
+        <div class="payment-box">
+            <div class="amount-display">
+                <h3>Payment Amount</h3>
+                <div class="amount">$<%= total %></div>
+            </div>
+
+            <div id="paypal-button-container"></div>
+            <div id="status" class="status-message"></div>
+
+            <div class="text-center btn-back">
+                <a href="/payment" class="btn btn-outline-secondary">Back to Payment Methods</a>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        paypal.Buttons({
+            style: {
+                layout: 'vertical',
+                color:  'blue',
+                shape:  'rect',
+                label:  'paypal'
+            },
+            createOrder: function(data, actions) {
+                return actions.order.create({
+                    purchase_units: [{
+                        amount: { value: '<%= total %>' }
+                    }]
+                });
+            },
+            onApprove: function(data, actions) {
+                return actions.order.capture().then(function(details) {
+                    document.getElementById('status').innerHTML = 
+                        '<div class="alert alert-success">Payment completed by ' + details.payer.name.given_name + '!</div>';
+                    
+                });
+            },
+            onCancel: function(data) {
+                document.getElementById('status').innerHTML = 
+                    '<div class="alert alert-warning">Payment canceled.</div>';
+            },
+            onError: function(err) {
+                document.getElementById('status').innerHTML = 
+                    '<div class="alert alert-danger">Error: ' + err + '</div>';
+            }
+        }).render('#paypal-button-container');
+    </script>
+</body>
+</html>

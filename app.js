@@ -23,6 +23,9 @@ const InvoiceModel = require('./Models/invoice');
 const NETSService = require('./services/nets');
 const StripeService = require('./services/stripe');
 const cartcontroller = require('./Controllers/cartcontroller');
+const paypalClient = require("./services/paypal");
+const checkoutNodeJssdk = require("@paypal/checkout-server-sdk");
+
 
 // Multer setup for uploads
 const storage = multer.diskStorage({
@@ -608,6 +611,111 @@ app.get('/payment/stripe/fail', checkAuthenticated, (req, res) => {
     message: 'Your Stripe payment could not be completed. Please try again.'
   });
 });
+// Cancel
+app.get("/cancel", (req, res) => {
+    res.send("Payment cancelled");
+});
+
+app.get("/payment/Paypal", checkAuthenticated, (req, res) => {
+  const cart = req.session.cart || [];
+  let subtotal = 0;
+
+  cart.forEach(item => {
+    subtotal += item.price * item.quantity;
+  });
+
+  const tax = subtotal * 0.09;
+  const total = (subtotal + tax).toFixed(2);
+
+  res.render("payment/Paypal", { cart, subtotal, tax, total });
+});
+
+app.post("/payment/paypal", checkAuthenticated, async (req, res) => {
+  console.log("PAYPAL BODY:", req.body);
+
+  const orderID = req.body.orderID;
+
+  if (!orderID) {
+    return res.status(400).json({ error: "Missing PayPal order ID" });
+  }
+
+  try {
+    const capture = await paypalClient.captureOrder(orderID);
+
+    if (capture.status !== "COMPLETED") {
+      return res.json({ error: "PayPal payment not completed" });
+    }
+
+    const cart = req.session.cart || [];
+    if (!cart.length) {
+      return res.json({ error: "No items in cart" });
+    }
+
+    let subtotal = 0;
+    const invoiceItems = cart.map(item => {
+      const lineTotal = item.price * item.quantity;
+      subtotal += lineTotal;
+      return { ...item, lineTotal };
+    });
+
+    const tax = subtotal * 0.09;
+    const total = subtotal + tax;
+
+    const invoiceNumber = "INV-" + Date.now();
+
+    const invoiceData = {
+      invoice_number: invoiceNumber,
+      user_id: req.session.user.id,
+      subtotal,
+      tax,
+      total,
+      payment_method: "Paypal"
+    };
+
+    const itemsForDb = invoiceItems.map(it => ({
+      product_id: it.id,
+      product_name: it.productName,
+      price: it.price,
+      quantity: it.quantity,
+      line_total: it.lineTotal
+    }));
+
+    InvoiceModel.createInvoice(invoiceData, itemsForDb, (err, result) => {
+      req.session.cart = [];
+
+      req.session.invoice = {
+        invoiceNumber,
+        date: new Date().toLocaleDateString("en-US"),
+        items: invoiceItems,
+        subtotal,
+        tax,
+        total,
+        customer: req.session.user.username,
+        paymentMethod: "Paypal",
+        paymentStatus: "Completed"
+      };
+
+      if (err) {
+        console.error("Invoice DB error:", err);
+        return res.json({ success: true, invoiceId: null });
+      }
+
+      res.json({ success: true, invoiceId: result.invoiceId });
+    });
+
+  } catch (err) {
+    console.error("PayPal capture error:", err);
+    res.status(500).json({ error: "PayPal capture failed" });
+  }
+});
+
+app.get('/paypal', (req, res) => {
+  
+  const total = req.query.total || 20.00; 
+  res.render('payment/Paypal', { total: total });
+});
+
+
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
